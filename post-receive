@@ -275,7 +275,7 @@ function notify() {
     exit 1
   fi
 
-  payload="{${msg}"
+  payload="{${log_out}"
 
   if [ -n "$channel" ]; then
     payload="$payload, \"channel\": \"$channel\""

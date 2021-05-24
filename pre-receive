@@ -1,5 +1,22 @@
 #!/bin/bash
 
-oldrev=$(git rev-parse $1) #
-newrev=$(git rev-parse $2)
-refname="$3"
+oldrev=$(git rev-parse $1) #the old commit SHA1
+newrev=$(git rev-parse $2) #the new commit SHA1
+refname="$3"               #branch name
+# 0000->1234 (create)
+# 1234->2345 (update)
+# 2345->0000 (delete)
+if expr "$oldrev" : '0*$' >/dev/null
+then
+  branch_type="create"
+else
+  if expr "$newrev" : '0*$' >/dev/null
+  then
+    branch_type="delete"
+  else
+    branch_type="update"
+  fi
+fi
+log_out=$(git log $newrev --pretty=format:Committing:%h\nCommit_message:%s \nAuthor:%an,\nDate:%cd -1 --abbrev-commit)
+webhook_url=$(git config --get hooks.slack.webhook-url)
+curl -X POST -H 'Content-type: application/json' --data '{"text":${log_out}}' ${webhook_url}
