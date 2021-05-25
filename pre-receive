@@ -35,8 +35,8 @@ do
     fi
     case "$branch_type" in 
      "update")
-	      changed_file=$(git diff --name-only $oldrev $newrev)
-	      num=$(git log --pretty=oneline $oldrev..$newrev|wc -l|tr -d ' ')
+	num=$(git log --pretty=oneline $oldrev..$newrev|wc -l|tr -d ' ')
+	changed_file=$(git diff --name-only $oldrev $newrev)
         all_website=""
         OLD_IFS="$IFS"
         IFS='\n'
@@ -48,15 +48,18 @@ do
           #echo $all_website
         done
         all_website=$all_website'\n'$num' new commit pushed to '$branch_name
-	      ;;
+	log_out=$(git log $newrev --pretty=format:' Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -$num --abbrev-commit)
+	;;
       "delete")
+	log_out=$(git log $oldrev --pretty=format:' Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -1 --abbrev-commit)
         all_website=$branch_name' has been deleted from repo.'
         ;;
       "create")
-        all_website=$branch_name' has been created in repo.' 
+	log_out=$(git log $newrev --pretty=format:' Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -1 --abbrev-commit)
+        all_website=$branch_name' has been created in repo.\n'$website'/tree/'$branch_name
         ;;
     esac
-    log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -$num --abbrev-commit)    
+    #log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -$num --abbrev-commit)    
     #curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${channel}\", \"text\": \"${log_out}\" }" ${webhook_url} >/dev/null
 done
 #echo $changed_file
