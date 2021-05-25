@@ -1,65 +1,65 @@
 #!/bin/bash
 while read oldrev newrev refname
 do
-    #num=$(git log --pretty=oneline $oldrev..$newrev|wc -l|tr -d ' ')
     OLD_IFS="$IFS"
     IFS='/'
-    array=($refname)
-    IFS="$OLD_IFS"
+    array=($refname)  #refname:/refs/HEADS/branch_name  
+    IFS="$OLD_IFS"    #get the branch_name from refname
     for each in ${array[*]}
     do 
-	branch_name=$each
+    	branch_name=$each
     done
-#    log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -1 --abbrev-commit)
-    webhook_url=$(git config --get hooks.slack.webhook-url)
-    channel=$(git config --get hooks.slack.channel)
-    website=$(git config --get hooks.slack.repo-website)
+    case ${branch_name} in       #if branch_name is master, stop uploading
+      "master")
+      echo "Please do not push files in master branch"
+      #exit 1 
+      ;;
+    esac
+#   log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -1 --abbrev-commit)
+    webhook_url=$(git config --get hooks.slack.webhook-url)  #get the webhook_url from user-set config
+    channel=$(git config --get hooks.slack.channel)          #get the channel name from user-set config
+    website=$(git config --get hooks.slack.repo-website)     #get the repo-website frem user-set config
+    # SHA1 0000->1234 (create)
+    # SHA1 1234->2345 (update)
+    # SHA1 2345->0000 (delete)
     if expr "$oldrev" : '0*$' >/dev/null
     then
         branch_type="create"
     else
       if expr "$newrev" : '0*$' >/dev/null
       then
-	branch_type="delete"
+	    branch_type="delete"
       else 
-	branch_type="update"
+	    branch_type="update"
       fi
     fi
     case "$branch_type" in 
-     update)
+     "update")
 	     changed_file=$(git diff --name-only $oldrev $newrev)
 	     num=$(git log --pretty=oneline $oldrev..$newrev|wc -l|tr -d ' ')
-	     ;;
-    esac
-    log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -$num --abbrev-commit)    
-    #curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${channel}\", \"text\": \"${log_out}\" }" ${webhook_url} >/dev/null
-done
-# 0000->1234 (create)
-# 1234->2345 (update)
-# 2345->0000 (delete)
-if expr "$oldrev" : '0*$' >/dev/null
-then
-  branch_type="create"
-else
-  if expr "$newrev" : '0*$' >/dev/null
-  then
-    branch_type="delete"
-  else
-    branch_type="update"
-  fi
-fi
-echo $changed_file
-echo $num
-all_website=""
-OLD_IFS="$IFS"
-IFS='\n'
-arr=($changed_file)
-IFS="$OLD_IFS"
-for s in ${arr[@]}
+       all_website=""
+       OLD_IFS="$IFS"
+       IFS='\n'
+       arr=($changed_file)
+       IFS="$OLD_IFS"
+       for s in ${arr[@]}
 do
   all_website=$all_website$website'/tree/'$branch_name'/'$s'\n'
   echo $all_website
 done
+	     ;;
+      "delete")
+
+      ;;
+      "create")
+
+      ;;
+    esac
+    log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -$num --abbrev-commit)    
+    #curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${channel}\", \"text\": \"${log_out}\" }" ${webhook_url} >/dev/null
+done
+#echo $changed_file
+#echo $num
 
 #log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd' -1 --abbrev-commit)
 #webhook_url=$(git config --get hooks.slack.webhook-url)
