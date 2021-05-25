@@ -1,8 +1,39 @@
 #!/bin/bash
-
-oldrev=$(git rev-parse $1) #the old commit SHA1
-newrev=$(git rev-parse $2) #the new commit SHA1
-refname="$3"               #branch name
+while read oldrev newrev refname
+do
+    #num=$(git log --pretty=oneline $oldrev..$newrev|wc -l|tr -d ' ')
+    OLD_IFS="$IFS"
+    IFS='/'
+    array=($refname)
+    IFS="$OLD_IFS"
+    for each in ${array[*]}
+    do 
+	branch_name=$each
+    done
+#    log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -1 --abbrev-commit)
+    webhook_url=$(git config --get hooks.slack.webhook-url)
+    channel=$(git config --get hooks.slack.channel)
+    website=$(git config --get hooks.slack.repo-website)
+    if expr "$oldrev" : '0*$' >/dev/null
+    then
+        branch_type="create"
+    else
+      if expr "$newrev" : '0*$' >/dev/null
+      then
+	branch_type="delete"
+      else 
+	branch_type="update"
+      fi
+    fi
+    case "$branch_type" in 
+     update)
+	     changed_file=$(git diff --name-only $oldrev $newrev)
+	     num=$(git log --pretty=oneline $oldrev..$newrev|wc -l|tr -d ' ')
+	     ;;
+    esac
+    log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -$num --abbrev-commit)    
+    #curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${channel}\", \"text\": \"${log_out}\" }" ${webhook_url} >/dev/null
+done
 # 0000->1234 (create)
 # 1234->2345 (update)
 # 2345->0000 (delete)
@@ -17,6 +48,25 @@ else
     branch_type="update"
   fi
 fi
-log_out=$(git log $newrev --pretty=format:Committing:%h\nCommit_message:%s \nAuthor:%an,\nDate:%cd -1 --abbrev-commit)
-webhook_url=$(git config --get hooks.slack.webhook-url)
-curl -X POST -H 'Content-type: application/json' --data '{"text":${log_out}}' ${webhook_url}
+echo $changed_file
+echo $num
+all_website=""
+OLD_IFS="$IFS"
+IFS='\n'
+arr=($changed_file)
+IFS="$OLD_IFS"
+for s in ${arr[@]}
+do
+  all_website=$all_website$website'/tree/'$branch_name'/'$s'\n'
+  echo $all_website
+done
+
+#log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd' -1 --abbrev-commit)
+#webhook_url=$(git config --get hooks.slack.webhook-url)
+#echo ${log_out}
+#channel=$(git config --get hooks.slack.channel)
+#echo payload={\"channel\": \"${channel}\", \"username\": \"${username}\",\"text\": \"${log_out}\" }
+#payload={\"channel\": \"${channel}\", \"username\": \"${username}\",\"text\": \"${log_out}\" }
+curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${channel}\", \"text\": \"${log_out}${all_website}\" }" ${webhook_url} >/dev/null
+#curl -X POST -H 'Content-type: application/json' --data '{"text":"$log_out"}' ${webhook_url}
+exit 0
