@@ -1,0 +1,4 @@
+# my configuration file
+export webhook_url='https://hooks.slack.com/services/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'
+export channel='code-review-mci-proj'
+export repo_website='https://github.cs.adelaide.edu.au/MCI-Projects-2021/Team-22'

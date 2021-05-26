@@ -1,0 +1,6 @@
+#!/bin/bash
+source $(pwd)'/config_user'
+echo $webhook_url
+echo $repo_website
+echo $channel
+curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${channel}\", \"text\": \"${repo_website}${channel}\" }" ${webhook_url} >/dev/null

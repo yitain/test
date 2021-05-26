@@ -3,40 +3,45 @@ while read oldrev newrev refname
 do
     OLD_IFS="$IFS"
     IFS='/'
-    array=($refname)  #refname:/refs/HEADS/branch_name  
-    IFS="$OLD_IFS"    #get the branch_name from refname
+    array=($refname)  # refname:/refs/HEADS/branch_name
+    IFS="$OLD_IFS"  # get the branch_name from refname
     for each in ${array[*]}
-    do 
-    	branch_name=$each
+    do
+    	branch_name =$each
     done
-    case ${branch_name} in       #if branch_name is master, stop uploading
+    case ${branch_name} in  # if branch_name is master, stop uploading
       "master")
-      echo "Please do not push files in master branch"
-      #exit 1 
+      echo "Please do not push files in master branch"      # exit 1
       ;;
     esac
 #   log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -1 --abbrev-commit)
-    webhook_url=$(git config --get hooks.slack.webhook-url)  #get the webhook_url from user-set config
-    channel=$(git config --get hooks.slack.channel)          #get the channel name from user-set config
-    website=$(git config --get hooks.slack.repo-website)     #get the repo-website frem user-set config
+    # get the webhook_url from user-set config
+    #webhook_url=$(git config --get hooks.slack.webhook-url)
+    # get the channel name from user-set config
+    #channel=$(git config --get hooks.slack.channel)
+    # get the repo-website frem user-set config
+    #website=$(git config --get hooks.slack.repo-website)
+    source $(pwd)'/config_user' #set webhook_url, repo_website and channel name
     # SHA1 0000->1234 (create)
     # SHA1 1234->2345 (update)
     # SHA1 2345->0000 (delete)
-    if expr "$oldrev" : '0*$' >/dev/null
+    if expr "$oldrev": '0*$' > /dev/null
     then
         branch_type="create"
     else
-      if expr "$newrev" : '0*$' >/dev/null
+      if expr "$newrev": '0*$' > /dev/null
       then
 	    branch_type="delete"
-      else 
+      else
 	    branch_type="update"
       fi
     fi
-    case "$branch_type" in 
+    case "$branch_type" in
      "update")
-	num=$(git log --pretty=oneline $oldrev..$newrev|wc -l|tr -d ' ')
-	changed_file=$(git diff --name-only $oldrev $newrev)
+	    # get the number of user commit
+	    num=$(git log --pretty=oneline $oldrev..$newrev | wc - l | tr - d ' ')
+	    # get the changed_file name
+	    changed_file=$(git diff --name-only $oldrev $newrev)
         all_website=""
         OLD_IFS="$IFS"
         IFS='\n'
@@ -44,33 +49,33 @@ do
         IFS="$OLD_IFS"
         for s in ${arr[@]}
         do
+          # get the all_website from all changed_file
           all_website=$all_website$website'/tree/'$branch_name'/'$s'\n'
-          #echo $all_website
+          # echo $all_website
         done
         all_website=$all_website'\n'$num' new commit pushed to '$branch_name
-	log_out=$(git log $newrev --pretty=format:' Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -$num --abbrev-commit)
-	;;
-      "delete")
-	log_out=$(git log $oldrev --pretty=format:' Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -1 --abbrev-commit)
-        all_website=$branch_name' has been deleted from repo.'
+	      log_out=$(git log $newrev --pretty=format:' Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -$num --abbrev-commit)
         ;;
+      "delete")
+	      log_out=$(git log $oldrev --pretty=format:' Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -1 --abbrev-commit)
+        all_website=$branch_name' has been deleted from repo.';;
       "create")
-	log_out=$(git log $newrev --pretty=format:' Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -1 --abbrev-commit)
+	      log_out=$(git log $newrev --pretty=format:' Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -1 --abbrev-commit)
         all_website=$branch_name' has been created in repo.\n'$website'/tree/'$branch_name
         ;;
     esac
-    #log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -$num --abbrev-commit)    
-    #curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${channel}\", \"text\": \"${log_out}\" }" ${webhook_url} >/dev/null
+    # log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd,\n' -$num --abbrev-commit)
+    # curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${channel}\", \"text\": \"${log_out}\" }" ${webhook_url} >/dev/null
 done
-#echo $changed_file
-#echo $num
+# echo $changed_file
+# echo $num
 
-#log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd' -1 --abbrev-commit)
-#webhook_url=$(git config --get hooks.slack.webhook-url)
-#echo ${log_out}
-#channel=$(git config --get hooks.slack.channel)
-#echo payload={\"channel\": \"${channel}\", \"username\": \"${username}\",\"text\": \"${log_out}\" }
-#payload={\"channel\": \"${channel}\", \"username\": \"${username}\",\"text\": \"${log_out}\" }
+# log_out=$(git log $newrev --pretty=format:'Committing:%h,\n  Commit_message:%s,\n  Author:%an,\n  Date:%cd' -1 --abbrev-commit)
+# webhook_url=$(git config --get hooks.slack.webhook-url)
+# echo ${log_out}
+# channel=$(git config --get hooks.slack.channel)
+# echo payload={\"channel\": \"${channel}\", \"username\": \"${username}\",\"text\": \"${log_out}\" }
+# payload={\"channel\": \"${channel}\", \"username\": \"${username}\",\"text\": \"${log_out}\" }
 curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${channel}\", \"text\": \"${log_out}${all_website}\" }" ${webhook_url} >/dev/null
-#curl -X POST -H 'Content-type: application/json' --data '{"text":"$log_out"}' ${webhook_url}
+# curl -X POST -H 'Content-type: application/json' --data '{"text":"$log_out"}' ${webhook_url}
 exit 0
